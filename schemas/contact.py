@@ -10,10 +10,10 @@ class ContactBase(BaseModel):
     birth_date: date
     additional_data: str | None = None
 
-@field_validator("email")
-@classmethod
-def normalize_email(cls, value: EmailStr) -> EmailStr:
-    return value.lower()
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> EmailStr:
+        return value.lower()
 
 
 class ContactCreate(ContactBase):
