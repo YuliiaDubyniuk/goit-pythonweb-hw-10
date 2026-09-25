@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import extract
 from sqlalchemy.orm import Session
 from database.db import get_db
-from database.models import Contact
+from database.models import Contact, User
 from schemas.contact import ContactCreate, ContactResponse, ContactUpdate
+from services.auth import get_current_user
 
 
 router = APIRouter(
@@ -19,8 +20,11 @@ def get_contacts(
     last_name: str | None = None,
     email: str | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Contact)
+    query = db.query(Contact).filter(
+        Contact.user_id == current_user.id
+    )
 
     if first_name:
         query = query.filter(Contact.first_name.ilike(f"%{first_name}%"))
@@ -38,6 +42,7 @@ def get_contacts(
 def create_contact(
     contact: ContactCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     new_contact = Contact(
         first_name=contact.first_name,
@@ -46,6 +51,7 @@ def create_contact(
         phone=contact.phone,
         birth_date=contact.birth_date,
         additional_data=contact.additional_data,
+        user_id=current_user.id,
     )
 
     db.add(new_contact)
@@ -58,6 +64,7 @@ def create_contact(
 @router.get("/birthdays", response_model=list[ContactResponse])
 def get_upcoming_birthdays(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     today = date.today()
     end_date = today + timedelta(days=7)
@@ -75,6 +82,7 @@ def get_upcoming_birthdays(
         contacts = (
             db.query(Contact)
             .filter(
+                Contact.user_id == current_user.id,
                 birth_month == start_month,
                 birth_day > start_day,
                 birth_day <= end_day,
@@ -85,6 +93,7 @@ def get_upcoming_birthdays(
         contacts = (
             db.query(Contact)
             .filter(
+                Contact.user_id == current_user.id,
                 (
                     (birth_month == start_month)
                     & (birth_day > start_day)
@@ -105,8 +114,12 @@ def get_upcoming_birthdays(
 def get_contact(
     contact_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    contact = db.query(Contact).filter(
+        Contact.id == contact_id,
+        Contact.user_id == current_user.id,
+    ).first()
 
     if contact is None:
         raise HTTPException(
@@ -122,8 +135,10 @@ def update_contact(
     contact_id: int,
     contact_data: ContactUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    contact = db.query(Contact).filter(
+        Contact.id == contact_id, Contact.user_id == current_user.id,).first()
 
     if contact is None:
         raise HTTPException(
@@ -143,12 +158,14 @@ def update_contact(
 
     return contact
 
+
 @router.delete("/{contact_id}", status_code=204)
 def delete_contact(
     contact_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.user_id == current_user.id,).first()
 
     if contact is None:
         raise HTTPException(
