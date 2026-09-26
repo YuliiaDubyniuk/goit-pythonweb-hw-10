@@ -1,10 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from database.db import get_db
 from database.models import User
 from schemas.user import UserCreate, UserLogin, UserResponse
-from services.auth import Hash, create_access_token
+from services.auth import (
+    ALGORITHM,
+    SECRET_KEY,
+    Hash,
+    create_access_token,
+)
+from services.email import send_email
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -15,7 +22,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def register(
+async def register(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
 ):
@@ -44,7 +52,61 @@ def register(
     db.commit()
     db.refresh(user)
 
+    await send_email(
+        user.email,
+        user.username,
+        str(request.base_url).rstrip("/"),
+    )
+
     return user
+
+
+@router.get("/verify-email/{token}")
+def verify_email(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+
+        email = payload.get("sub")
+
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification token",
+            )
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    user = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.verified:
+        return {"message": "Email already verified"}
+
+    user.verified = True
+
+    db.commit()
+
+    return {"message": "Email successfully verified"}
 
 
 @router.post("/login")

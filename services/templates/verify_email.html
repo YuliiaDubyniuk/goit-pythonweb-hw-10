@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Confirm your email</title>
+  </head>
+  <body>
+    <p>Hi {{ username }},</p>
+    <br />
+    <p>Thank you for signing up for our service.</p>
+
+    <p>Please click the following link to verify your email address:</p>
+
+    <p>
+      <a href="{{ host }}/auth/verify-email/{{ token }}"> Verify your email </a>
+    </p>
+    <br />
+    <b>Link is valid ONLY 24 hours.</b>
+    <br />
+    <p>If you did not sign up for our service, please ignore this email.</p>
+
+    <p>
+      Thanks,<br />
+      Contacts API Team
+    </p>
+  </body>
+</html>
