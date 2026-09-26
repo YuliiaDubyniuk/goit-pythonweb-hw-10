@@ -20,7 +20,8 @@ dependencies = [
     "bcrypt (<4.1)",
     "slowapi (>=0.1.10,<0.2.0)",
     "fastapi-mail (>=1.6.8,<2.0.0)",
-    "cloudinary (>=1.46.2,<2.0.0)"
+    "cloudinary (>=1.46.2,<2.0.0)",
+    "python-multipart (>=0.0.32,<0.0.33)"
 ]
 
 
